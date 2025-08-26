@@ -1,145 +1,111 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ConsoleCast Receiver</title>
   <style>
     body {
-      margin:0;
-      font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
-      background:#0b0b0f;
-      color:#fff;
-      overflow:hidden;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
     }
-    #toastContainer {
-      position:fixed;
-      top:20px;
-      right:20px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      z-index:9999;
+
+    h1 {
+      color: #4ade80;
     }
-    .toast {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      width:380px;
-      min-height:80px;
-      background:rgba(20,20,20,0.9);
-      border-radius:10px;
-      padding:10px 14px;
-      color:#fff;
-      box-shadow:0 4px 20px rgba(0,0,0,.35);
-      animation:slideIn .25s ease-out, fadeOut .25s ease-in 5s forwards;
+
+    #messages {
+      width: 100%;
+      max-width: 600px;
+      margin-top: 20px;
     }
-    .toast .icon img {
-      width:32px;
-      height:32px;
-      border-radius:6px;
+
+    .message {
+      display: flex;
+      align-items: center;
+      background: #1e1e1e;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 8px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.4);
     }
-    .toast .content { flex:1; }
-    .toast .title {
-      font-weight:700;
-      font-size:1rem;
-      margin-bottom:2px;
+
+    .message img.icon {
+      width: 32px;
+      height: 32px;
+      margin-right: 10px;
     }
-    .toast .msg {
-      opacity:0.85;
-      font-size:0.9rem;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    /* Color accents */
-    .toast.whatsapp { border-left:4px solid #25D366; }
-    .toast.snapchat { border-left:4px solid #FFFC00; background:#fff; color:#000; }
-    .toast.twitter  { border-left:4px solid #1DA1F2; }
-    .toast.default  { border-left:4px solid #aaa; }
-    /* Animations */
-    @keyframes slideIn { from{opacity:0; transform:translateX(40px);} to{opacity:1; transform:translateX(0);} }
-    @keyframes fadeOut { to{opacity:0; transform:translateX(40px);} }
-    /* Watermark for Free plan */
-    #watermark {
-      position:fixed; bottom:10px; right:10px;
-      font-size:0.8rem; opacity:0.6; color:#fff;
+
+    .message strong {
+      color: #4ade80;
     }
   </style>
 </head>
 <body>
-  <div id="toastContainer"></div>
-  <div id="watermark">ConsoleCast Free</div>
+  <h1>📺 ConsoleCast Receiver</h1>
+  <div id="messages"></div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getDatabase, ref, query, limitToLast, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+  <script type="module">
+    // Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
-  // === Your Firebase config ===
-  const firebaseConfig = {
-    apiKey: "AIzaSyBGiPQRlT7xVWPp1rhOGUGekkFutOCEe4",
-    authDomain: "consolecast-7aa94.firebaseapp.com",
-    databaseURL: "https://consolecast-7aa94-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "consolecast-7aa94",
-    storageBucket: "consolecast-7aa94.appspot.com",
-    messagingSenderId: "491737021551",
-    appId: "1:491737021551:web:18e4c7f73a117e115e19a"
-  };
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGiPQRlt7Xv1WPp1rhOGUGekkFutOCEe4",
+      authDomain: "consolecast-7aa94.firebaseapp.com",
+      projectId: "consolecast-7aa94",
+      storageBucket: "consolecast-7aa94.appspot.com",
+      messagingSenderId: "491737021551",
+      appId: "1:491737021551:web:188e4c7f73a117e115e19a",
+      measurementId: "G-XM3YBYGDCW"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-  // Get room + key from URL
-  const params = new URLSearchParams(location.search);
-  const ROOM = params.get("room") || "default";
-  const KEY  = params.get("key") || null;
-
-  // Free mode daily limit
-  let freeCount = 0;
-  const FREE_LIMIT = 20;
-
-  const toastContainer = document.getElementById("toastContainer");
-  const watermark = document.getElementById("watermark");
-
-  function showToast(data){
-    // Free plan cap
-    if(!KEY){
-      freeCount++;
-      if(freeCount > FREE_LIMIT){
-        if(freeCount === FREE_LIMIT+1) alert("Free plan daily limit reached");
-        return;
+    // Pick icon depending on app
+    function getIcon(app) {
+      switch ((app || "").toLowerCase()) {
+        case "whatsapp": return "icons/whatsapp-icon-logo-png_seeklogo-305567.png";
+        case "snapchat": return "icons/snapchat-logo-png_seeklogo-249555.png";
+        case "twitter": return "icons/twitter-x-logo-png_seeklogo-492396.png";
+        default: return "icons/default.png";
       }
     }
 
-    const sender = (data.sender||"").toLowerCase();
-    let cls = "default";
-    if(sender.includes("whatsapp")) cls="whatsapp";
-    else if(sender.includes("snap")) cls="snapchat";
-    else if(sender.includes("twitter")) cls="twitter";
+    // Render message
+    function renderMessage(app, sender, text) {
+      return `
+        <div class="message">
+          <img src="${getIcon(app)}" alt="${app}" class="icon" />
+          <div>
+            <strong>${sender}</strong>: ${text}
+          </div>
+        </div>
+      `;
+    }
 
-    const toast = document.createElement("div");
-    toast.className = `toast ${cls}`;
-    toast.innerHTML = `
-      <div class="icon"><img src="icons/${cls}.png" onerror="this.src='icons/default.png'"></div>
-      <div class="content">
-        <div class="title">${data.sender||"Unknown"}</div>
-        <div class="msg">${data.message||""}</div>
-      </div>`;
-    toastContainer.appendChild(toast);
+    // Get room from URL (?room=testroom)
+    const params = new URLSearchParams(window.location.search);
+    const ROOM = params.get("room") || "testroom";
 
-    // Auto-remove after 5s
-    setTimeout(()=>toast.remove(),5200);
-  }
-
-  // Listen for new messages
-  const q = query(ref(db, `rooms/${ROOM}/messages`), limitToLast(50));
-  onChildAdded(q, snap=>{
-    showToast(snap.val());
-  });
-
-  // Hide watermark if Pro/Elite
-  if(KEY) watermark.style.display="none";
-
-</script>
+    // Listen for messages
+    const messagesDiv = document.getElementById("messages");
+    const roomRef = ref(db, `rooms/${ROOM}/messages`);
+    onChildAdded(roomRef, (snapshot) => {
+      const data = snapshot.val();
+      const app = data.app || "unknown";
+      const sender = data.sender || "Anon";
+      const text = data.text || "";
+      messagesDiv.innerHTML += renderMessage(app, sender, text);
+    });
+  </script>
 </body>
 </html>
