@@ -84,15 +84,17 @@
   import { getDatabase, ref, onChildAdded, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
   // === Replace with your Firebase config ===
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "000000000000",
-    appId: "YOUR_APP_ID"
-  };
+ const firebaseConfig = {
+  apiKey: "AIzaSyBGiPQRlT7xVWPp1rhOGUGekkFutOCEe4",
+  authDomain: "consolecast-7aa94.firebaseapp.com",
+  databaseURL: "https://consolecast-7aa94-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "consolecast-7aa94",
+  storageBucket: "consolecast-7aa94.appspot.com",
+  messagingSenderId: "491737021551",
+  appId: "1:491737021551:web:18e4c7f73a117e115e19a",
+  measurementId: "G-XM3YBYGDCW"
+};
+
 
   const params = new URLSearchParams(location.search);
   const ROOM = params.get('room') || "demo";
