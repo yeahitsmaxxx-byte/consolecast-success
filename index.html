@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConsoleCast — Notifications for Gamers</title>
+  <style>
+    :root {
+      --bg: #0b0b0f;
+      --card: #131318;
+      --text: #fff;
+      --muted: #9aa3af;
+      --green: #4ade80;
+      --purple: #a78bfa;
+    }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }
+    nav a { margin-left: 20px; text-decoration: none; color: var(--muted); font-weight: 600; }
+    nav a.btn { background: var(--green); color: #000; padding: 10px 16px; border-radius: 999px; font-weight: 700; }
+    .hero { text-align: center; padding: 80px 20px;
+      background: linear-gradient(135deg, #4ade80 0%, #22d3ee 50%, #a78bfa 100%); color: #000; }
+    .hero h1 { font-size: 2.8rem; margin-bottom: 12px; }
+    .hero p { font-size: 1.2rem; opacity: .9; }
+    .hero .cta { margin-top: 20px; }
+    .hero .cta a { display: inline-block; padding: 14px 24px; background: #000; color: #fff;
+      border-radius: 999px; font-weight: 800; text-decoration: none; font-size: 1.1rem; }
+    .pricing { max-width: 1000px; margin: 60px auto; padding: 0 20px; display: grid;
+      grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .card { background: var(--card); border-radius: 16px; padding: 24px; text-align: center; position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+    .card h2 { margin-top: 0; }
+    .price { font-size: 2rem; font-weight: 900; margin: 10px 0; }
+    .card ul { list-style: none; padding: 0; margin: 0; text-align: left; }
+    .card li { margin: 8px 0; }
+    .btn-choose { display: inline-block; margin-top: 20px; padding: 12px 18px; border-radius: 12px;
+      font-weight: 700; text-decoration: none; }
+    .free .btn-choose { background: #2d2d33; color: #fff; }
+    .pro { border: 2px solid var(--green); }
+    .pro .btn-choose { background: var(--green); color: #000; }
+    .elite { border: 2px solid var(--purple); }
+    .elite .btn-choose { background: var(--purple); color: #000; }
+    .badge { position: absolute; top: -12px; right: -12px; background: var(--green); color: #000; font-weight: 700;
+      font-size: .8rem; padding: 6px 10px; border-radius: 999px; }
+    footer { background: #111; color: var(--muted); text-align: center; padding: 20px; margin-top: 60px; font-size: .9rem; }
+    footer a { color: var(--green); margin: 0 8px; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>ConsoleCast</strong></div>
+    <nav>
+      <a href="sender.html">Sender</a>
+      <a href="receiver.html">Receiver</a>
+      <a class="btn" href="choose.html">Upgrade</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Notifications that pop up on your console screen 🎮</h1>
+    <p>Never miss a message again — while gaming on Xbox, PlayStation, or PC.</p>
+    <div class="cta"><a href="receiver.html?room=test">Try it Free</a></div>
+  </section>
+
+  <section class="pricing">
+    <div class="card free">
+      <h2>Free</h2>
+      <div class="price">£0</div>
+      <ul>
+        <li>1 sender linked</li>
+        <li>20 notifications/day</li>
+        <li>Watermark</li>
+      </ul>
+      <a class="btn-choose" href="receiver.html?room=test">Start Free</a>
+    </div>
+
+    <div class="card pro">
+      <div class="badge">Most Popular</div>
+      <h2>Pro</h2>
+      <div class="price">£1.99<span>/month</span></div>
+      <ul>
+        <li>Unlimited notifications</li>
+        <li>Multiple senders</li>
+        <li>No watermark</li>
+        <li>Xbox + PS themes</li>
+        <li>Choose corner position</li>
+        <li>Floating video window</li>
+      </ul>
+      <p style="margin-top:6px;font-size:0.9rem;color:var(--green);font-weight:600">
+        💡 Most gamers choose Pro
+      </p>
+      <a class="btn-choose" href="choose.html">Upgrade to Pro</a>
+    </div>
+
+    <div class="card elite">
+      <h2>Elite</h2>
+      <div class="price">£2.99<span>/month</span></div>
+      <ul>
+        <li>Everything in Pro</li>
+        <li>Custom icons & sounds</li>
+        <li>Multi-room support</li>
+        <li>Early feature access</li>
+      </ul>
+      <a class="btn-choose" href="choose.html">Go Elite</a>
+    </div>
+  </section>
+
+  <footer>
+    © 2025 ConsoleCast |
+    <a href="privacy.html">Privacy</a> |
+    <a href="terms.html">Terms</a> |
+    <a href="mailto:support@consolecast.app">Support</a>
+  </footer>
+</body>
+</html>
