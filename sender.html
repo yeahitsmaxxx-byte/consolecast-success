@@ -1,68 +1,122 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ConsoleCast — Sender</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ConsoleCast Sender</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b0b0f;color:#fff;margin:0;padding:20px;text-align:center}
-    h1{color:#4ade80;margin-bottom:10px}
-    input,button{margin:8px 0;padding:10px;border-radius:8px;border:none;font-size:1rem}
-    input{width:90%;max-width:400px;background:#111;color:#fff;border:1px solid #333}
-    button{background:#4ade80;color:#000;font-weight:700;cursor:pointer}
-    button:hover{background:#22c55e}
-    .box{max-width:480px;margin:40px auto;background:#131318;padding:20px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.5)}
-    .status{margin-top:20px;color:#9aa3af}
+    :root{
+      --bg:#0b0b0f; --card:#15151a; --text:#fff; --muted:#9aa3af; --green:#4ade80;
+    }
+    body{
+      margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg); color:var(--text); display:grid; place-items:center; min-height:100svh;
+    }
+    .box{
+      width:min(520px, 92vw); background:var(--card); border-radius:16px; padding:22px;
+      box-shadow:0 10px 40px rgba(0,0,0,.35);
+    }
+    h1{ margin:0 0 16px; font-size:1.4rem; }
+    label{ display:block; font-size:.9rem; color:var(--muted); margin:12px 0 6px; }
+    input, select, textarea{
+      width:100%; border:1px solid #23232a; background:#101016; color:#fff;
+      padding:12px 14px; border-radius:10px; outline:none; font-size:1rem;
+    }
+    textarea{ resize:vertical; min-height:90px; }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    button{
+      margin-top:14px; width:100%; border:0; padding:12px 14px; border-radius:12px;
+      background:var(--green); color:#001a06; font-weight:700; cursor:pointer; font-size:1rem;
+    }
+    .status{ margin-top:10px; font-size:.95rem; color:var(--muted); }
+    .hint{ margin-top:16px; font-size:.85rem; color:var(--muted); }
   </style>
 </head>
 <body>
-  <h1>ConsoleCast Sender ⚡</h1>
   <div class="box">
-    <input id="room" placeholder="Room name" />
-    <input id="sender" placeholder="Your name" />
-    <input id="msg" placeholder="Message" />
+    <h1>ConsoleCast Sender ⚡</h1>
+
+    <div class="row">
+      <div>
+        <label>Room</label>
+        <input id="room" placeholder="e.g. testroom" />
+      </div>
+      <div>
+        <label>App</label>
+        <select id="app">
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Snapchat">Snapchat</option>
+          <option value="Twitter">X</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Your name</label>
+    <input id="sender" placeholder="e.g. Mum" />
+
+    <label>Message</label>
+    <textarea id="message" placeholder="Type message…" ></textarea>
+
     <button id="sendBtn">Send to Console</button>
     <div class="status" id="status">Idle…</div>
+
+    <div class="hint">
+      Tip: open the Receiver on your console:<br/>
+      <code>…/receiver.html?room=testroom</code>
+    </div>
   </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
-  // === Replace with your Firebase config ===
-  const firebaseConfig = {
-  apiKey: "AIzaSyBGiPQRlT7xVWPp1rhOGUGekkFutOCEe4",
-  authDomain: "consolecast-7aa94.firebaseapp.com",
-  databaseURL: "https://consolecast-7aa94-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "consolecast-7aa94",
-  storageBucket: "consolecast-7aa94.appspot.com",
-  messagingSenderId: "491737021551",
-  appId: "1:491737021551:web:18e4c7f73a117e115e19a",
-  measurementId: "G-XM3YBYGDCW"
-};
+    // === Your Firebase config (same as receiver) ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBGiPQRlT7xVWPp1rhOGUGekkFutOCEe4",
+      authDomain: "consolecast-7aa94.firebaseapp.com",
+      databaseURL: "https://consolecast-7aa94-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "consolecast-7aa94",
+      storageBucket: "consolecast-7aa94.appspot.com",
+      messagingSenderId: "491737021551",
+      appId: "1:491737021551:web:18e4c7f73a117e115e19a"
+    };
 
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+    // Prefill from URL (?room=...&sender=...&app=...)
+    const params = new URLSearchParams(location.search);
+    const $ = id => document.getElementById(id);
+    $("room").value   = params.get("room")   || "testroom";
+    $("sender").value = params.get("sender") || "";
+    $("app").value    = params.get("app")    || "WhatsApp";
 
-  const roomEl = document.getElementById('room');
-  const senderEl = document.getElementById('sender');
-  const msgEl = document.getElementById('msg');
-  const statusEl = document.getElementById('status');
+    $("sendBtn").addEventListener("click", async () => {
+      const room    = $("room").value.trim()   || "testroom";
+      const appName = $("app").value.trim();
+      const sender  = $("sender").value.trim() || "Anon";
+      const text    = $("message").value.trim();
 
-  document.getElementById('sendBtn').addEventListener('click', () => {
-    const room = roomEl.value.trim();
-    const sender = senderEl.value.trim();
-    const msg = msgEl.value.trim();
-    if (!room || !sender || !msg){ statusEl.textContent="Fill all fields"; return; }
-    push(ref(db, `rooms/${room}/messages`), {
-      sender: sender,
-      message: msg,
-      time: Date.now()
+      if(!text){ $("status").textContent = "Please type a message."; return; }
+
+      const payload = {
+        app: appName,          // used by receiver to pick icon
+        sender: sender,        // who it's from
+        text: text,            // used by the newest receiver
+        message: text,         // backward compat (older receiver)
+        createdAt: serverTimestamp()
+      };
+
+      try{
+        await push(ref(db, `rooms/${room}/messages`), payload);
+        $("status").textContent = "✅ Sent!";
+        $("message").value = "";
+        setTimeout(()=>$("status").textContent="Idle…", 1200);
+      }catch(err){
+        console.error(err);
+        $("status").textContent = "❌ Failed to send.";
+      }
     });
-    statusEl.textContent = "✅ Sent!";
-    msgEl.value = "";
-  });
-</script>
+  </script>
 </body>
 </html>
