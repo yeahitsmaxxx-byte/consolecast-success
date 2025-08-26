@@ -1,0 +1,247 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ConsoleCast — Receiver</title>
+  <style>
+    html,body{height:100%;margin:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b0b0f;color:#fff}
+    .toast-wrap{position:fixed;display:flex;flex-direction:column;gap:12px;z-index:99999}
+    .bottom-left{left:24px;bottom:24px;align-items:flex-start}
+    .bottom-right{right:24px;bottom:24px;align-items:flex-end}
+    .top-left{left:24px;top:24px;align-items:flex-start}
+    .top-right{right:24px;top:24px;align-items:flex-end}
+    .toast{display:flex;align-items:center;gap:12px;min-width:320px;max-width:560px;background:rgba(24,24,24,0.9);color:#fff;border-radius:12px;
+      box-shadow:0 8px 30px rgba(0,0,0,.35);padding:12px 14px;backdrop-filter:blur(6px);
+      animation:slideIn .28s ease-out, fadeOut .28s ease-in 4.2s forwards;}
+    .icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(145deg,#4ade80,#16a34a);
+      display:flex;align-items:center;justify-content:center;font-weight:900;color:#0a0a0a}
+    .content{display:flex;flex-direction:column}
+    .title{font-size:0.95rem;font-weight:800;opacity:.95}
+    .msg{font-size:0.95rem;opacity:.95}
+    @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes fadeOut{to{opacity:0;transform:translateY(8px)}}
+    .hud-hint{position:fixed;top:10px;right:12px;background:rgba(0,0,0,.5);color:#fff;padding:6px 10px;border-radius:8px;font-size:.85rem}
+    .watermark{position:fixed;top:10px;left:12px;background:rgba(0,0,0,.6);color:#fff;padding:6px 10px;border-radius:8px;font-size:.85rem}
+    .upgrade{position:fixed;bottom:16px;right:16px;background:#111;color:#fff;padding:10px 12px;border-radius:10px;font-weight:700;text-decoration:none}
+    .hidden{display:none}
+    select,input,button{background:#111;color:#fff;border:1px solid #333;border-radius:8px;padding:6px}
+    /* Floating window */
+    #floatingWin{position:fixed;top:150px;right:40px;width:320px;height:180px;background:#000;
+      border:2px solid #444;border-radius:8px;z-index:10000;resize:both;overflow:hidden}
+    #floatHeader{background:#222;color:#fff;padding:4px;cursor:move;font-size:.8rem;
+      display:flex;align-items:center;justify-content:space-between}
+    #floatHeader button{background:none;border:0;color:#fff;cursor:pointer;font-size:1rem}
+    #floatFrame{width:100%;height:calc(100% - 24px);border:0}
+  </style>
+</head>
+<body>
+<div class="toast-wrap bottom-left" id="toasts"></div>
+<div class="hud-hint" id="hint">Listening…</div>
+<div class="watermark hidden" id="wm">ConsoleCast Free —
+  <a id="upgradeLink" href="choose.html" style="color:#9ef">Upgrade</a>
+</div>
+<a class="upgrade hidden" id="upgradeBtn" href="choose.html">Upgrade</a>
+
+<!-- Corner position (Pro/Elite) -->
+<div id="posControls" class="hidden" style="position:fixed;top:46px;right:12px;background:#111;padding:8px;border-radius:8px">
+  <label style="color:#fff;font-size:.9rem">Position:</label>
+  <select id="cornerSelect">
+    <option value="bottom-left">Bottom Left</option>
+    <option value="bottom-right">Bottom Right</option>
+    <option value="top-left">Top Left</option>
+    <option value="top-right">Top Right</option>
+  </select>
+</div>
+
+<!-- Floating window controls (Pro/Elite) -->
+<div id="floatControls" class="hidden"
+     style="position:fixed;top:90px;right:12px;background:#111;padding:8px;border-radius:8px;max-width:260px">
+  <label style="color:#fff;font-size:.9rem">Floating Window URL:</label>
+  <input id="floatUrl" placeholder="https:// (YouTube embed, Twitch, MP4)" style="width:100%;margin-top:4px">
+  <div style="margin-top:6px;display:flex;gap:6px">
+    <button id="openFloat">Open</button>
+    <button id="closeFloat">Close</button>
+  </div>
+  <div style="color:#9aa3af;font-size:.75rem;margin-top:6px">Some sites block embedding; try YouTube embed URLs or direct MP4.</div>
+</div>
+
+<!-- Floating window -->
+<div id="floatingWin" class="hidden">
+  <div id="floatHeader">
+    <span>Floating Window</span>
+    <div>
+      <button id="minBtn">—</button>
+      <button id="xBtn">✕</button>
+    </div>
+  </div>
+  <iframe id="floatFrame" src=""></iframe>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getDatabase, ref, onChildAdded, query, limitToLast, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+
+  // === Replace with your Firebase config ===
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "YOUR_APP_ID"
+  };
+
+  const params = new URLSearchParams(location.search);
+  const ROOM = params.get('room') || "demo";
+  const LICENSE = params.get('key') || ""; // ?key=XXXX-... to unlock premium
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const messagesRef = query(ref(db, `rooms/${ROOM}/messages`), limitToLast(50));
+
+  const hint = document.getElementById('hint');
+  const wm = document.getElementById('wm');
+  const upgradeLink = document.getElementById('upgradeLink');
+  const upgradeBtn = document.getElementById('upgradeBtn');
+
+  upgradeLink.href = `choose.html?room=${encodeURIComponent(ROOM)}`;
+  upgradeBtn.href = `choose.html?room=${encodeURIComponent(ROOM)}`;
+
+  let isPremium = false;
+
+  // Free mode limits
+  const LS_SENDER_KEY = `cc_allowed_sender_${ROOM}`;
+  const LS_COUNT_KEY  = `cc_daycount_${ROOM}`;
+  function getDayKey(){ const d=new Date(); return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`; }
+  function readDayCount(){
+    try{ const obj=JSON.parse(localStorage.getItem(LS_COUNT_KEY)||"{}"); const day=getDayKey(); if(obj.day!==day) return{day,count:0}; return obj; }
+    catch(e){ return { day:getDayKey(), count:0 }; }
+  }
+  function writeDayCount(count){ const day=getDayKey(); localStorage.setItem(LS_COUNT_KEY, JSON.stringify({ day, count })); }
+
+  async function checkLicense(){
+    if (!LICENSE){ setFree(); return; }
+    try{
+      const snap = await get(ref(db, `licenses/${LICENSE}`));
+      const v = snap.val();
+      if (v && v.active === true && (!v.room || v.room === ROOM)){
+        isPremium = true;
+        const tier = v.tier || "pro";
+        hint.textContent = `Room: ${ROOM} — Premium (${tier})`;
+        wm.classList.add('hidden');
+        upgradeBtn.classList.add('hidden');
+        document.getElementById('posControls').classList.remove('hidden');
+        document.getElementById('floatControls').classList.remove('hidden');
+      } else { setFree(); }
+    } catch(e){ setFree(); }
+  }
+  function setFree(){
+    isPremium = false;
+    hint.textContent = `Room: ${ROOM} — Free (1 sender, 20/day)`;
+    wm.classList.remove('hidden');
+    upgradeBtn.classList.remove('hidden');
+  }
+  await checkLicense();
+
+  onChildAdded(messagesRef, (snap) => {
+    const v = snap.val(); if (!v) return;
+    if (!isPremium){
+      const allowed = localStorage.getItem(LS_SENDER_KEY);
+      const incomingSender = String(v.sender || "Someone");
+      if (!allowed){
+        localStorage.setItem(LS_SENDER_KEY, incomingSender);
+        showToast("ConsoleCast", `Free mode: linked to sender “${incomingSender}”`);
+      } else if (allowed !== incomingSender){
+        showToast("ConsoleCast", `Blocked: only “${allowed}” can send in free mode.`, true); return;
+      }
+      const st = readDayCount();
+      if (st.count >= 20){ showToast("ConsoleCast", "Daily free limit reached — upgrade for unlimited.", true); return; }
+      writeDayCount(st.count + 1);
+    }
+    showToast(v?.sender || "Someone", v?.message || "");
+  });
+
+  function showToast(sender, message, silent=false){
+    const wrap = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<div class="icon">⚡</div><div class="content"><div class="title">${escapeHtml(sender)} says</div><div class="msg">${escapeHtml(message)}</div></div>`;
+    wrap.prepend(el);
+    if (!silent) chime();
+    setTimeout(()=>{el.remove();}, 4500);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+  function chime(){
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.type='triangle'; o.frequency.value=880;
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.2, ctx.currentTime+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.35);
+    o.start(); o.stop(ctx.currentTime+0.4);
+  }
+
+  // Corner selector
+  const toasts = document.getElementById('toasts');
+  const cornerSelect = document.getElementById('cornerSelect');
+  cornerSelect.addEventListener('change', () => {
+    toasts.className = 'toast-wrap ' + cornerSelect.value;
+    localStorage.setItem('cc_corner', cornerSelect.value);
+  });
+  const savedCorner = localStorage.getItem('cc_corner');
+  if (savedCorner){ cornerSelect.value = savedCorner; toasts.className = 'toast-wrap ' + savedCorner; }
+
+  // Floating window
+  const floatingWin = document.getElementById('floatingWin');
+  const floatFrame = document.getElementById('floatFrame');
+  const floatUrl = document.getElementById('floatUrl');
+  document.getElementById('openFloat').addEventListener('click', () => {
+    const url = floatUrl.value.trim();
+    if (!url) return alert("Enter a URL");
+    floatFrame.src = url;
+    floatingWin.classList.remove('hidden');
+  });
+  document.getElementById('closeFloat').addEventListener('click', () => {
+    floatFrame.src = "";
+    floatingWin.classList.add('hidden');
+  });
+  let minimised = false;
+  document.getElementById('minBtn').addEventListener('click', () => {
+    if (!minimised) {
+      floatingWin.style.height = "28px";
+      floatFrame.style.display = "none";
+      document.getElementById('minBtn').textContent = "+";
+      minimised = true;
+    } else {
+      floatingWin.style.height = "180px";
+      floatFrame.style.display = "block";
+      document.getElementById('minBtn').textContent = "—";
+      minimised = false;
+    }
+  });
+  document.getElementById('xBtn').addEventListener('click', () => {
+    floatFrame.src = "";
+    floatingWin.classList.add('hidden');
+  });
+  (function makeDraggable(winEl, handleEl){
+    let pos1=0,pos2=0,pos3=0,pos4=0;
+    handleEl.onmousedown = dragMouseDown;
+    function dragMouseDown(e){
+      e.preventDefault(); pos3=e.clientX; pos4=e.clientY;
+      document.onmouseup = closeDragElement; document.onmousemove = elementDrag;
+    }
+    function elementDrag(e){
+      e.preventDefault();
+      pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+      pos3 = e.clientX; pos4 = e.clientY;
+      winEl.style.top  = (winEl.offsetTop - pos2) + "px";
+      winEl.style.left = (winEl.offsetLeft - pos1) + "px";
+    }
+    function closeDragElement(){ document.onmouseup = null; document.onmousemove = null; }
+  })(floatingWin, document.getElementById('floatHeader'));
+</script>
+</body>
+</html>
